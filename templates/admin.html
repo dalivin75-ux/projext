@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Skeppets kansli{% endblock %}
+
+{% block content %}
+<section class="container section">
+  <div class="section-heading">
+    <h1>Skeppets kansli</h1>
+    {% if user.role == 'admin' %}
+      <a class="button secondary" href="{{ url_for('admin_users') }}">Hantera användare</a>
+    {% endif %}
+  </div>
+
+  {% for hunt in pending %}
+    <div class="panel mini-card">
+      <h2>{{ hunt.title }}</h2>
+      <p>Skapad av {{ hunt.username }}</p>
+      <div class="admin-actions">
+        <form method="post" action="{{ url_for('publish_hunt', hunt_id=hunt.id) }}">
+          <button type="submit" class="button primary">Publicera</button>
+        </form>
+        <form method="post" action="{{ url_for('reject_hunt', hunt_id=hunt.id) }}">
+          <button type="submit" class="button ghost">Avvisa</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <p>Det finns inga nya uppdrag att granska.</p>
+  {% endfor %}
+</section>
+{% endblock %}

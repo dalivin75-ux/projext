@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Skattjaktens hamn{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container hero-inner">
+    <div>
+      <p class="eyebrow">Sveriges piratliga skattjakt</p>
+      <h1>Skattjaktens hamn</h1>
+      <p class="lead">Här samlas sjöfarare, skattjägare och skarpsinniga upptäcktsresande i en gemenskap som delar ledtrådar, historier och fynd.</p>
+      {% if not user %}
+        <div class="hero-actions">
+          <a class="button primary" href="{{ url_for('register') }}">Bli medlem</a>
+          <a class="button secondary" href="{{ url_for('login') }}">Logga in</a>
+        </div>
+      {% else %}
+        <div class="hero-actions">
+          <a class="button primary" href="{{ url_for('dashboard') }}">Mina skattjakter</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="container section">
+  <div class="section-heading">
+    <h2>Publicerade skatter</h2>
+    <a href="{{ url_for('campfire') }}">Gå till lägerelden</a>
+  </div>
+
+  <div class="card-grid">
+    {% for hunt in hunts %}
+      <article class="card hunt-card">
+        <img src="{{ hunt.image_url }}" alt="{{ hunt.title }}">
+        <div class="card-body">
+          <span class="tag">{{ hunt.location or 'Okänd plats' }}</span>
+          <h3>{{ hunt.title }}</h3>
+          <p>{{ hunt.summary }}</p>
+          <div class="meta-row">
+            <span>{{ hunt.difficulty or 'Svårighetsgrad okänd' }}</span>
+            <span>{{ hunt.published_at[:10] if hunt.published_at else 'Ny' }}</span>
+          </div>
+          <a class="button ghost" href="{{ url_for('treasure_detail', hunt_id=hunt.id) }}">Läs mer</a>
+        </div>
+      </article>
+    {% else %}
+      <div class="empty-state">
+        <p>Inga publicerade skatter än. Var den första sjöfararen som lägger upp ett uppdrag.</p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

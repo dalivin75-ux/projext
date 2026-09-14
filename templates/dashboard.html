@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Min loggbok{% endblock %}
+
+{% block content %}
+<section class="container section">
+  <div class="section-heading">
+    <h1>{{ user.username }}s loggbok</h1>
+    <span class="tag">{{ user.role }}</span>
+  </div>
+
+  <div class="dashboard-layout">
+    <div class="panel">
+      <h2>Skapa ny skattjakt</h2>
+      <form method="post" action="{{ url_for('create_hunt') }}">
+        <label for="title">Titel</label>
+        <input id="title" name="title" type="text" required>
+
+        <label for="summary">Kort beskrivning</label>
+        <textarea id="summary" name="summary" rows="3" required></textarea>
+
+        <label for="content">Beskrivning</label>
+        <textarea id="content" name="content" rows="6" required></textarea>
+
+        <label for="image_url">Bild-URL</label>
+        <input id="image_url" name="image_url" type="url" placeholder="https://...">
+
+        <label for="location">Plats</label>
+        <input id="location" name="location" type="text">
+
+        <label for="difficulty">Svårighetsgrad</label>
+        <input id="difficulty" name="difficulty" type="text" value="Medel">
+
+        <button class="button primary" type="submit">Skicka till granskning</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Mina inlägg</h2>
+      {% for hunt in my_hunts %}
+        <div class="mini-card">
+          <h3>{{ hunt.title }}</h3>
+          <p>{{ hunt.summary }}</p>
+          <div class="status-row">
+            <span class="tag status-{{ hunt.status }}">{{ hunt.status }}</span>
+          </div>
+          <a href="{{ url_for('treasure_detail', hunt_id=hunt.id) }}">Öppna</a>
+        </div>
+      {% else %}
+        <p>Du har inte skapat någon skattjakt ännu.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if user.role in ['admin', 'moderator'] %}
+    <div class="panel panel-wide">
+      <h2>Granskning</h2>
+      {% for hunt in pending %}
+        <div class="mini-card">
+          <h3>{{ hunt.title }}</h3>
+          <p>Av {{ hunt.username }}</p>
+          <div class="admin-actions">
+            <form method="post" action="{{ url_for('publish_hunt', hunt_id=hunt.id) }}">
+              <button type="submit" class="button primary">Publicera</button>
+            </form>
+            <form method="post" action="{{ url_for('reject_hunt', hunt_id=hunt.id) }}">
+              <button type="submit" class="button ghost">Avvisa</button>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <p>Inga skatter väntar på granskning just nu.</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

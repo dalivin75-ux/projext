@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Skattjaktens hamn{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container nav-wrap">
+        <a class="brand" href="{{ url_for('index') }}">⚓ Skattjaktens hamn</a>
+        <nav class="nav">
+          <a href="{{ url_for('index') }}">Hem</a>
+          <a href="{{ url_for('campfire') }}">Lägereld</a>
+          {% if user %}
+            <a href="{{ url_for('dashboard') }}">Min loggbok</a>
+            {% if user.role in ['admin', 'moderator'] %}
+              <a href="{{ url_for('admin_panel') }}">Skeppets kansli</a>
+            {% endif %}
+            {% if user.role == 'admin' %}
+              <a href="{{ url_for('admin_users') }}">Användare</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}">Logga ut</a>
+          {% else %}
+            <a href="{{ url_for('login') }}">Logga in</a>
+            <a href="{{ url_for('register') }}">Bli medlem</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="container flash-wrap">
+          {% for message in messages %}
+            <div class="flash">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

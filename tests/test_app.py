@@ -1,0 +1,121 @@
+import os
+
+import pytest
+
+os.environ['TESTING'] = '1'
+
+from treasure import app
+
+
+@pytest.fixture()
+def client():
+    app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
+    test_db = os.path.join(os.path.dirname(__file__), '..', 'test_treasure.db')
+    if os.path.exists(test_db):
+        os.remove(test_db)
+    app.config['DATABASE'] = test_db
+    with app.app_context():
+        from treasure import init_db
+        init_db()
+    with app.test_client() as client:
+        yield client
+    if os.path.exists(test_db):
+        os.remove(test_db)
+
+
+def test_homepage_has_swedish_title(client):
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b'Skattjaktens hamn' in response.data.lower() or b'skattjaktens hamn' in response.data.lower()
+
+
+def test_member_registration_and_login(client):
+    response = client.post('/register', data={
+        'username': 'pirat42',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    assert response.status_code == 200
+    assert b'Konto skapat' in response.data or b'konto skapat' in response.data
+
+    login_response = client.post('/login', data={
+        'username': 'pirat42',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+    assert login_response.status_code == 200
+    assert b'Logga ut' in login_response.data or b'logga ut' in login_response.data
+
+
+def test_admin_can_publish_submission(client):
+    client.post('/register', data={
+        'username': 'adminpirat',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'adminpirat',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    response = client.post('/dashboard/create', data={
+        'title': 'Guld i klippskrevan',
+        'summary': 'En skatt i den gamla gruvan.',
+        'content': 'Svarta flaggan hide the chest in the stone ruins.',
+        'image_url': 'https://example.com/treasure.jpg',
+        'location': 'Sjövik',
+        'difficulty': 'Medel'
+    }, follow_redirects=True)
+    assert response.status_code == 200
+
+    client.get('/logout')
+    client.post('/login', data={
+        'username': 'adminpirat',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    admin_response = client.post('/admin/publish/1', follow_redirects=True)
+    assert admin_response.status_code == 200
+
+
+def test_ensure_admin_exists_for_first_user(client):
+    with app.app_context():
+        from treasure import get_db
+        db = get_db()
+        db.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                   ('sjoman', 'hash', 'member'))
+        db.commit()
+
+    from treasure import ensure_admin_exists
+    with app.app_context():
+        ensure_admin_exists()
+
+    with app.app_context():
+        from treasure import get_db
+        row = get_db().execute("SELECT role FROM users WHERE username = ?", ('sjoman',)).fetchone()
+        assert row["role"] == "admin"
+
+
+def test_admin_can_manage_user_roles(client):
+    client.post('/register', data={
+        'username': 'adminpirat',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/register', data={
+        'username': 'medlem',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+
+    client.post('/login', data={
+        'username': 'adminpirat',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    response = client.post('/admin/users/role/2', data={
+        'role': 'moderator'
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'moderator' in response.data.lower()

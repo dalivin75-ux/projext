@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ hunt.title }}{% endblock %}
+
+{% block content %}
+<section class="container section treasure-layout">
+  <article class="article-card">
+    <img class="feature-image" src="{{ hunt.image_url }}" alt="{{ hunt.title }}">
+    <div class="article-body">
+      <span class="tag">{{ hunt.location or 'Okänd plats' }}</span>
+      <h1>{{ hunt.title }}</h1>
+      <p class="meta-line">Skapad av {{ hunt.username }} · {{ hunt.difficulty or 'Okänd svårighet' }}</p>
+      <p>{{ hunt.summary }}</p>
+      <div class="story">{{ hunt.content }}</div>
+    </div>
+  </article>
+
+  <aside class="comment-panel">
+    <h2>Diskussion vid lägerelden</h2>
+    {% for comment in comments %}
+      <div class="comment">
+        <div class="comment-head">
+          <strong>{{ comment.username }}</strong>
+          <span>{{ comment.created_at[:16] }}</span>
+        </div>
+        <p>{{ comment.content }}</p>
+      </div>
+    {% else %}
+      <p>Inga kommentarer ännu. Var först att lägga ett spår.</p>
+    {% endfor %}
+
+    <form method="post" class="comment-form">
+      <label for="comment">Skriv till lägerelden</label>
+      <textarea id="comment" name="comment" rows="4" required></textarea>
+      <button type="submit" class="button primary">Skicka</button>
+    </form>
+  </aside>
+</section>
+{% endblock %}

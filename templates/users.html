@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Användare{% endblock %}
+
+{% block content %}
+<section class="container section">
+  <div class="section-heading">
+    <h1>Administrera användare</h1>
+    <a class="button secondary" href="{{ url_for('admin_panel') }}">Tillbaka till kansliet</a>
+  </div>
+
+  {% for member in users %}
+    <div class="panel mini-card">
+      <h2>{{ member.username }}</h2>
+      <p>Roll: {{ member.role }}</p>
+      {% if member.role != 'admin' %}
+        <form method="post" action="{{ url_for('update_user_role', user_id=member.id) }}">
+          <label for="role-{{ member.id }}">Ändra roll</label>
+          <select id="role-{{ member.id }}" name="role">
+            <option value="member" {% if member.role == 'member' %}selected{% endif %}>Medlem</option>
+            <option value="moderator" {% if member.role == 'moderator' %}selected{% endif %}>Moderator</option>
+            <option value="admin" {% if member.role == 'admin' %}selected{% endif %}>Admin</option>
+          </select>
+          <button type="submit" class="button primary">Spara</button>
+        </form>
+      {% else %}
+        <p>Huvudkaptenen kan inte avsättas om det är den sista adminen.</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}

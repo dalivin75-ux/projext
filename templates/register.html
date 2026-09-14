@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Bli medlem{% endblock %}
+
+{% block content %}
+<section class="container auth-wrap">
+  <div class="auth-card">
+    <h1>Bli medlem i hamnen</h1>
+    <form method="post">
+      <label for="username">Användarnamn</label>
+      <input id="username" name="username" type="text" required>
+
+      <label for="password">Lösenord</label>
+      <input id="password" name="password" type="password" required>
+
+      <label for="confirm_password">Bekräfta lösenord</label>
+      <input id="confirm_password" name="confirm_password" type="password" required>
+
+      <button class="button primary" type="submit">Skapa konto</button>
+    </form>
+    <p class="auth-copy">Redan medlem? <a href="{{ url_for('login') }}">Logga in</a></p>
+  </div>
+</section>
+{% endblock %}

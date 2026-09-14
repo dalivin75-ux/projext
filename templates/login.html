@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Logga in{% endblock %}
+
+{% block content %}
+<section class="container auth-wrap">
+  <div class="auth-card">
+    <h1>Logga in</h1>
+    <form method="post">
+      <label for="username">Användarnamn</label>
+      <input id="username" name="username" type="text" required>
+
+      <label for="password">Lösenord</label>
+      <input id="password" name="password" type="password" required>
+
+      <button class="button primary" type="submit">Gå ombord</button>
+    </form>
+    <p class="auth-copy">Har du inte ett konto? <a href="{{ url_for('register') }}">Bli medlem</a></p>
+  </div>
+</section>
+{% endblock %}

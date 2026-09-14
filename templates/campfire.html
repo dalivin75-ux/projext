@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Lägereld{% endblock %}
+
+{% block content %}
+<section class="container section campfire-layout">
+  <div class="campfire-panel">
+    <div class="section-heading">
+      <h1>Lägerelden</h1>
+      <p>Här delar sjömännen sina teorier, lögner och fynd.</p>
+    </div>
+
+    {% for comment in comments %}
+      <article class="comment">
+        <div class="comment-head">
+          <strong>{{ comment.username }}</strong>
+          <span>{{ comment.created_at[:16] }}</span>
+        </div>
+        <p>{{ comment.content }}</p>
+      </article>
+    {% else %}
+      <p>Ingen har sagt något vid elden ännu. Är det din tur att starta berättelsen?</p>
+    {% endfor %}
+  </div>
+
+  <aside class="side-panel">
+    <h2>Skatter i luften</h2>
+    {% for hunt in hunts %}
+      <div class="mini-card">
+        <h3>{{ hunt.title }}</h3>
+        <p>{{ hunt.summary }}</p>
+        <a href="{{ url_for('treasure_detail', hunt_id=hunt.id) }}">Gå till uppdraget</a>
+      </div>
+    {% else %}
+      <p>Inga publicerade skatter just nu.</p>
+    {% endfor %}
+  </aside>
+</section>
+{% endblock %}
