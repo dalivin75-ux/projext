@@ -407,3 +407,37 @@ def test_treasure_hunt_requires_verification_code(client):
         from treasure import get_db
         hunt = get_db().execute("SELECT id FROM hunts WHERE title = ?", ('Saknar kod',)).fetchone()
         assert hunt is None
+
+
+def test_owner_can_edit_published_treasure_and_resubmit(client):
+    client.post('/register', data={
+        'username': 'skapare',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'skapare',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/dashboard/create', data={
+        'title': 'Publicerad skatt',
+        'summary': 'Originaltext.',
+        'content': 'Originalledtråd.',
+        'verification_code': 'ORIGINAL-1'
+    }, follow_redirects=True)
+    client.post('/admin/publish/1', follow_redirects=True)
+
+    response = client.post('/dashboard/edit/1', data={
+        'title': 'Uppdaterad skatt',
+        'summary': 'Ny text.',
+        'content': 'Ny ledtråd.',
+        'verification_code': 'NY-1'
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'skickats till granskning' in response.data.lower()
+    with app.app_context():
+        from treasure import get_db
+        hunt = get_db().execute("SELECT title, status FROM hunts WHERE id = 1").fetchone()
+        assert hunt["title"] == 'Uppdaterad skatt'
+        assert hunt["status"] == 'pending'

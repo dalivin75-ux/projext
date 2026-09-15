@@ -51,7 +51,7 @@
           <div class="status-row">
             <span class="tag status-{{ hunt.status }}">{{ hunt.status }}</span>
           </div>
-          {% if hunt.status in ['draft', 'rejected'] %}
+          {% if hunt.status in ['draft', 'rejected', 'published'] %}
             <a class="button ghost" href="{{ url_for('edit_hunt', hunt_id=hunt.id) }}">Redigera och skicka igen</a>
           {% endif %}
           <a href="{{ url_for('treasure_detail', hunt_id=hunt.id) }}">Öppna</a>

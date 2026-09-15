@@ -32,11 +32,11 @@ Detta dokument samlar portalens funktioner och viktiga förändringar. Portalen 
 
 ### Redigering och återinsändning
 
-- Ägare kan redigera sina egna utkast och avvisade skattjakter.
+- Ägare kan redigera sina egna utkast, avvisade och publicerade skattjakter.
 - Redigering behåller samma jakt-ID och ägare.
 - När en ändring sparas sätts status till `pending` igen.
 - Medlemmar kan inte redigera andras skattjakter.
-- Publicerade och väntande skattjakter kan inte redigeras av medlemmen.
+- Väntande och hittade skattjakter kan inte redigeras av medlemmen.
 
 ### Verifiering och hittade skatter
 

@@ -310,8 +310,8 @@ def edit_hunt(hunt_id):
         flash("Du kan bara redigera dina egna skattjakter.")
         return redirect(url_for("dashboard"))
 
-    if hunt["status"] not in ("draft", "rejected"):
-        flash("Endast utkast eller avvisade skattjakter kan redigeras.")
+    if hunt["status"] not in ("draft", "rejected", "published"):
+        flash("Endast utkast, avvisade eller publicerade skattjakter kan redigeras.")
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
