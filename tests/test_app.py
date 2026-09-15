@@ -128,6 +128,90 @@ def test_member_cannot_upload_unsupported_image(client):
     assert b'JPG, PNG eller WebP' in response.data
 
 
+def test_member_can_edit_and_resubmit_own_rejected_hunt(client):
+    client.post('/register', data={
+        'username': 'redigerare',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'redigerare',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    client.post('/dashboard/create', data={
+        'title': 'Gammal titel',
+        'summary': 'Gammal sammanfattning.',
+        'content': 'Gammal ledtråd.',
+        'location': 'Ön',
+        'difficulty': 'Medel'
+    }, follow_redirects=True)
+
+    with app.app_context():
+        from treasure import get_db
+        hunt = get_db().execute("SELECT id FROM hunts LIMIT 1").fetchone()
+        hunt_id = hunt["id"]
+        get_db().execute("UPDATE hunts SET status = 'rejected' WHERE id = ?", (hunt_id,))
+        get_db().commit()
+
+    response = client.post(f'/dashboard/edit/{hunt_id}', data={
+        'title': 'Ny titel',
+        'summary': 'Förbättrad sammanfattning.',
+        'content': 'Ny tydlig ledtråd.',
+        'image_url': 'https://example.com/ny-skatt.jpg',
+        'location': 'Den gröna ön',
+        'difficulty': 'Svår'
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'granskning' in response.data.lower()
+    with app.app_context():
+        from treasure import get_db
+        updated = get_db().execute("SELECT * FROM hunts WHERE id = ?", (hunt_id,)).fetchone()
+        assert updated["title"] == 'Ny titel'
+        assert updated["status"] == 'pending'
+
+
+def test_member_cannot_edit_another_members_hunt(client):
+    client.post('/register', data={
+        'username': 'forsta',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'forsta',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/dashboard/create', data={
+        'title': 'Första skatt',
+        'summary': 'Ägs av första.',
+        'content': 'Ledtråd.',
+    }, follow_redirects=True)
+    client.get('/logout')
+
+    client.post('/register', data={
+        'username': 'andra',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'andra',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    response = client.post('/dashboard/edit/1', data={
+        'title': 'Försök till kapning',
+        'summary': 'Inte tillåtet.',
+        'content': 'Inte tillåtet.'
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        from treasure import get_db
+        hunt = get_db().execute("SELECT title FROM hunts WHERE id = 1").fetchone()
+        assert hunt["title"] == 'Första skatt'
+
+
 def test_ensure_admin_exists_for_first_user(client):
     with app.app_context():
         from treasure import get_db

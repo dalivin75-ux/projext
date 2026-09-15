@@ -241,6 +241,63 @@ def dashboard():
     return render_template("dashboard.html", user=user, my_hunts=my_hunts, pending=pending)
 
 
+@app.route("/dashboard/edit/<int:hunt_id>", methods=["GET", "POST"])
+def edit_hunt(hunt_id):
+    if not user_is_logged_in():
+        flash("Logga in för att redigera en skattjakt.")
+        return redirect(url_for("login"))
+
+    db = get_db()
+    hunt = db.execute(
+        "SELECT * FROM hunts WHERE id = ? AND user_id = ?",
+        (hunt_id, session["user_id"]),
+    ).fetchone()
+    if not hunt:
+        flash("Du kan bara redigera dina egna skattjakter.")
+        return redirect(url_for("dashboard"))
+
+    if hunt["status"] not in ("draft", "rejected"):
+        flash("Endast utkast eller avvisade skattjakter kan redigeras.")
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        summary = request.form.get("summary", "").strip()
+        content = request.form.get("content", "").strip()
+        image_url = request.form.get("image_url", "").strip() or hunt["image_url"]
+        location = request.form.get("location", "").strip()
+        difficulty = request.form.get("difficulty", "").strip()
+        image_file = request.files.get("image_file")
+
+        if not title or not summary or not content:
+            flash("Titel, kort text och innehåll måste fyllas i.")
+            return render_template("edit_hunt.html", hunt=hunt, user=current_user())
+
+        if image_file and image_file.filename:
+            if not allowed_image(image_file.filename):
+                flash("Bilden måste vara JPG, PNG eller WebP.")
+                return render_template("edit_hunt.html", hunt=hunt, user=current_user())
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+            safe_name = secure_filename(image_file.filename)
+            stored_name = f"{session['user_id']}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{safe_name}"
+            image_file.save(os.path.join(app.config["UPLOAD_FOLDER"], stored_name))
+            image_url = url_for("uploaded_file", filename=stored_name)
+
+        db.execute(
+            """
+            UPDATE hunts
+            SET title = ?, summary = ?, content = ?, image_url = ?, location = ?, difficulty = ?, status = 'pending'
+            WHERE id = ? AND user_id = ?
+            """,
+            (title, summary, content, image_url, location, difficulty, hunt_id, session["user_id"]),
+        )
+        db.commit()
+        flash("Din ändrade skattjakt har skickats till granskning.")
+        return redirect(url_for("dashboard"))
+
+    return render_template("edit_hunt.html", hunt=hunt, user=current_user())
+
+
 @app.route("/dashboard/create", methods=["POST"])
 def create_hunt():
     if not user_is_logged_in():

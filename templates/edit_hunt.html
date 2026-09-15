@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Redigera skattjakt{% endblock %}
+
+{% block content %}
+<section class="container section">
+  <div class="panel">
+    <h1>Redigera skattjakt</h1>
+    <p>Uppdatera ledtrådarna och skicka in skattjakten till granskning igen.</p>
+    <form method="post" enctype="multipart/form-data">
+      <label for="title">Titel</label>
+      <input id="title" name="title" type="text" value="{{ hunt.title }}" required>
+
+      <label for="summary">Kort beskrivning</label>
+      <textarea id="summary" name="summary" rows="3" required>{{ hunt.summary }}</textarea>
+
+      <label for="content">Beskrivning</label>
+      <textarea id="content" name="content" rows="6" required>{{ hunt.content }}</textarea>
+
+      <label for="image_file">Byt uppladdad bild</label>
+      <input id="image_file" name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp">
+
+      <label for="image_url">Bild-URL</label>
+      <input id="image_url" name="image_url" type="url" value="{{ hunt.image_url or '' }}">
+
+      <label for="location">Plats</label>
+      <input id="location" name="location" type="text" value="{{ hunt.location or '' }}">
+
+      <label for="difficulty">Svårighetsgrad</label>
+      <input id="difficulty" name="difficulty" type="text" value="{{ hunt.difficulty or '' }}">
+
+      <button class="button primary" type="submit">Spara och skicka till granskning</button>
+      <a class="button ghost" href="{{ url_for('dashboard') }}">Avbryt</a>
+    </form>
+  </div>
+</section>
+{% endblock %}
