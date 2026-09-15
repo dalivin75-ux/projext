@@ -12,6 +12,18 @@
       <p class="meta-line">Skapad av {{ hunt.username }} · {{ hunt.difficulty or 'Okänd svårighet' }}</p>
       <p>{{ hunt.summary }}</p>
       <div class="story">{{ hunt.content }}</div>
+      {% if hunt.status == 'found' %}
+        <div class="flash">
+          <strong>Hittad!</strong> Skatten hittades av {{ hunt.found_by_username }}.
+          Tid från publicering: {{ (hunt.duration_seconds // 3600) }} h {{ ((hunt.duration_seconds % 3600) // 60) }} min.
+        </div>
+      {% elif hunt.status == 'published' and user %}
+        <form method="post" action="{{ url_for('claim_treasure', hunt_id=hunt.id) }}" class="claim-form">
+          <label for="verification_code">Har du hittat skatten? Skriv in koden</label>
+          <input id="verification_code" name="verification_code" type="text" required placeholder="Din kod">
+          <button type="submit" class="button primary">Verifiera fynd</button>
+        </form>
+      {% endif %}
     </div>
   </article>
 

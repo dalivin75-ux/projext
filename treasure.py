@@ -98,6 +98,19 @@ def init_db():
         )
         """
     )
+    hunt_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(hunts)").fetchall()
+    }
+    migrations = {
+        "verification_code_hash": "ALTER TABLE hunts ADD COLUMN verification_code_hash TEXT",
+        "found_by_id": "ALTER TABLE hunts ADD COLUMN found_by_id INTEGER",
+        "found_by_username": "ALTER TABLE hunts ADD COLUMN found_by_username TEXT",
+        "found_at": "ALTER TABLE hunts ADD COLUMN found_at TEXT",
+        "duration_seconds": "ALTER TABLE hunts ADD COLUMN duration_seconds INTEGER",
+    }
+    for column, statement in migrations.items():
+        if column not in hunt_columns:
+            db.execute(statement)
     db.commit()
 
 
@@ -146,6 +159,19 @@ def record_moderation_action(hunt_id, user, action, note=None):
         (hunt_id, user["id"], user["username"], action, note),
     )
     db.commit()
+
+
+def parse_timestamp(value):
+    if not value:
+        return None
+    return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+
+
+def verification_code_matches(hunt, submitted_code):
+    if not submitted_code or not hunt["verification_code_hash"]:
+        return False
+    normalized_code = submitted_code.strip().casefold()
+    return check_password_hash(hunt["verification_code_hash"], normalized_code)
 
 
 @app.before_request
@@ -293,6 +319,7 @@ def edit_hunt(hunt_id):
         summary = request.form.get("summary", "").strip()
         content = request.form.get("content", "").strip()
         image_url = request.form.get("image_url", "").strip() or hunt["image_url"]
+        verification_code = request.form.get("verification_code", "").strip()
         location = request.form.get("location", "").strip()
         difficulty = request.form.get("difficulty", "").strip()
         image_file = request.files.get("image_file")
@@ -314,10 +341,21 @@ def edit_hunt(hunt_id):
         db.execute(
             """
             UPDATE hunts
-            SET title = ?, summary = ?, content = ?, image_url = ?, location = ?, difficulty = ?, status = 'pending'
+            SET title = ?, summary = ?, content = ?, image_url = ?, location = ?, difficulty = ?,
+                verification_code_hash = ?, status = 'pending'
             WHERE id = ? AND user_id = ?
             """,
-            (title, summary, content, image_url, location, difficulty, hunt_id, session["user_id"]),
+            (
+                title,
+                summary,
+                content,
+                image_url,
+                location,
+                difficulty,
+                generate_password_hash(verification_code.casefold()) if verification_code else hunt["verification_code_hash"],
+                hunt_id,
+                session["user_id"],
+            ),
         )
         db.commit()
         flash("Din ändrade skattjakt har skickats till granskning.")
@@ -339,6 +377,7 @@ def create_hunt():
     image_file = request.files.get("image_file")
     location = request.form.get("location", "").strip()
     difficulty = request.form.get("difficulty", "").strip()
+    verification_code = request.form.get("verification_code", "").strip() or "SKATT"
 
     if not title or not summary or not content:
         flash("Titel, kort text och innehåll måste fyllas i.")
@@ -359,10 +398,20 @@ def create_hunt():
     db = get_db()
     db.execute(
         """
-        INSERT INTO hunts (user_id, title, summary, content, image_url, location, difficulty, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+        INSERT INTO hunts
+            (user_id, title, summary, content, image_url, location, difficulty, verification_code_hash, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         """,
-        (session["user_id"], title, summary, content, image_url, location, difficulty),
+        (
+            session["user_id"],
+            title,
+            summary,
+            content,
+            image_url,
+            location,
+            difficulty,
+            generate_password_hash(verification_code.casefold()),
+        ),
     )
     db.commit()
     flash("Din skattjakt har skickats till granskning.")
@@ -405,6 +454,50 @@ def treasure_detail(hunt_id):
         (hunt_id,),
     ).fetchall()
     return render_template("treasure_detail.html", hunt=hunt, comments=comments, user=current_user())
+
+
+@app.route("/treasure/<int:hunt_id>/claim", methods=["POST"])
+def claim_treasure(hunt_id):
+    if not user_is_logged_in():
+        flash("Logga in för att registrera att du hittat skatten.")
+        return redirect(url_for("login"))
+
+    db = get_db()
+    hunt = db.execute("SELECT * FROM hunts WHERE id = ?", (hunt_id,)).fetchone()
+    if not hunt:
+        flash("Denna skattjakt finns inte längre vid hamnen.")
+        return redirect(url_for("index"))
+    if hunt["status"] == "found":
+        flash("Den här skatten är redan hittad och arkiverad.")
+        return redirect(url_for("treasure_detail", hunt_id=hunt_id))
+    if hunt["status"] != "published":
+        flash("Skattjakten måste vara publicerad innan den kan hittas.")
+        return redirect(url_for("treasure_detail", hunt_id=hunt_id))
+    if not verification_code_matches(hunt, request.form.get("verification_code", "")):
+        flash("Fel verifieringskod. Försök igen.")
+        return redirect(url_for("treasure_detail", hunt_id=hunt_id))
+
+    found_at = datetime.utcnow()
+    started_at = parse_timestamp(hunt["published_at"]) or parse_timestamp(hunt["created_at"])
+    duration_seconds = max(0, int((found_at - started_at).total_seconds())) if started_at else 0
+    finder = current_user()
+    db.execute(
+        """
+        UPDATE hunts
+        SET status = 'found', found_by_id = ?, found_by_username = ?, found_at = ?, duration_seconds = ?
+        WHERE id = ? AND status = 'published'
+        """,
+        (
+            finder["id"],
+            finder["username"],
+            found_at.strftime("%Y-%m-%d %H:%M:%S"),
+            duration_seconds,
+            hunt_id,
+        ),
+    )
+    db.commit()
+    flash("Hittad! Skatten har arkiverats i skeppets loggbok.")
+    return redirect(url_for("treasure_detail", hunt_id=hunt_id))
 
 
 @app.route("/admin")

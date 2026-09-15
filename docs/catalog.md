@@ -38,6 +38,17 @@ Detta dokument samlar portalens funktioner och viktiga förändringar. Portalen 
 - Medlemmar kan inte redigera andras skattjakter.
 - Publicerade och väntande skattjakter kan inte redigeras av medlemmen.
 
+### Verifiering och hittade skatter
+
+- Skaparen anger en verifieringskod när skattjakten skapas.
+- Koden lagras hashad och visas aldrig publikt.
+- Inloggade medlemmar kan skriva in en kod på skattjaktens detaljsida.
+- Koden jämförs skiftlägesokänsligt efter att omgivande blanksteg tagits bort.
+- Vid rätt kod ändras status till `found`, vilket visas som `Hittad!`.
+- Skattjakten tas då bort från listan över aktiva publicerade skatter och arkiveras.
+- Arkivet sparar vem som hittade skatten, när den hittades och hur många sekunder det tog från publicering.
+- En skatt som redan är hittad kan inte registreras av en andra person.
+
 ### Lägerelden
 
 - Inloggade medlemmar kan kommentera publicerade skattjakter.
@@ -127,6 +138,13 @@ Loggen visas på `/admin/moderation-log` och har ingen borttagningsfunktion i we
 - Loggar publicering och avvisning med aktör och tidsstämpel.
 - Lade till adminvyn för granskningshistorik.
 - Lade till tester för båda modereringsbesluten.
+
+### Verifiering av hittad skatt
+
+- Lade till verifieringskod för nya skattjakter.
+- Lade till `found`-status och fyndmetadata i databasen.
+- Lade till kodkontroll och tidsmätning från publicering till fynd.
+- Lade till skydd mot fel kod och dubbla fynd.
 
 ## Verifiering
 

@@ -296,3 +296,79 @@ def test_admin_can_manage_user_roles(client):
 
     assert response.status_code == 200
     assert b'moderator' in response.data.lower()
+
+
+def test_member_can_verify_treasure_and_archive_finding(client):
+    client.post('/register', data={
+        'username': 'skapare',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'skapare',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/dashboard/create', data={
+        'title': 'Den hemliga kistan',
+        'summary': 'En skatt med verifieringskod.',
+        'content': 'Följ kompassen till fyren.',
+        'verification_code': 'GULD-42',
+    }, follow_redirects=True)
+
+    client.post('/admin/publish/1', follow_redirects=True)
+    client.post('/logout')
+    client.post('/register', data={
+        'username': 'finnare',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'finnare',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    response = client.post('/treasure/1/claim', data={
+        'verification_code': 'guld-42'
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'Hittad!' in response.data
+    assert b'finnare' in response.data
+    with app.app_context():
+        from treasure import get_db
+        hunt = get_db().execute("SELECT * FROM hunts WHERE id = 1").fetchone()
+        assert hunt["status"] == 'found'
+        assert hunt["found_by_username"] == 'finnare'
+        assert hunt["duration_seconds"] is not None
+        assert hunt["found_at"] is not None
+
+
+def test_wrong_verification_code_does_not_archive_treasure(client):
+    client.post('/register', data={
+        'username': 'skapare',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'skapare',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/dashboard/create', data={
+        'title': 'Koden vaktar',
+        'summary': 'Fel kod ska inte räcka.',
+        'content': 'Vid det gamla trädet.',
+        'verification_code': 'RATT-KOD',
+    }, follow_redirects=True)
+    client.post('/admin/publish/1', follow_redirects=True)
+
+    response = client.post('/treasure/1/claim', data={
+        'verification_code': 'FEL-KOD'
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'Fel verifieringskod' in response.data
+    with app.app_context():
+        from treasure import get_db
+        hunt = get_db().execute("SELECT status, found_by_username FROM hunts WHERE id = 1").fetchone()
+        assert hunt["status"] == 'published'
+        assert hunt["found_by_username"] is None
