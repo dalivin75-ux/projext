@@ -324,8 +324,8 @@ def edit_hunt(hunt_id):
         difficulty = request.form.get("difficulty", "").strip()
         image_file = request.files.get("image_file")
 
-        if not title or not summary or not content:
-            flash("Titel, kort text och innehåll måste fyllas i.")
+        if not title or not summary or not content or not verification_code:
+            flash("Titel, kort text, innehåll och verifieringskod måste fyllas i.")
             return render_template("edit_hunt.html", hunt=hunt, user=current_user())
 
         if image_file and image_file.filename:
@@ -352,7 +352,7 @@ def edit_hunt(hunt_id):
                 image_url,
                 location,
                 difficulty,
-                generate_password_hash(verification_code.casefold()) if verification_code else hunt["verification_code_hash"],
+                generate_password_hash(verification_code.casefold()),
                 hunt_id,
                 session["user_id"],
             ),
@@ -377,10 +377,10 @@ def create_hunt():
     image_file = request.files.get("image_file")
     location = request.form.get("location", "").strip()
     difficulty = request.form.get("difficulty", "").strip()
-    verification_code = request.form.get("verification_code", "").strip() or "SKATT"
+    verification_code = request.form.get("verification_code", "").strip()
 
-    if not title or not summary or not content:
-        flash("Titel, kort text och innehåll måste fyllas i.")
+    if not title or not summary or not content or not verification_code:
+        flash("Titel, kort text, innehåll och verifieringskod måste fyllas i.")
         return redirect(url_for("dashboard"))
 
     if image_file and image_file.filename:

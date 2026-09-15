@@ -65,7 +65,8 @@ def test_admin_can_publish_submission(client):
         'content': 'Svarta flaggan hide the chest in the stone ruins.',
         'image_url': 'https://example.com/treasure.jpg',
         'location': 'Sjövik',
-        'difficulty': 'Medel'
+        'difficulty': 'Medel',
+        'verification_code': 'GULD-42'
     }, follow_redirects=True)
     assert response.status_code == 200
 
@@ -96,6 +97,7 @@ def test_member_can_upload_valid_image(client):
         'content': 'Skatten finns vid fyren.',
         'location': 'Fyren',
         'difficulty': 'Lätt',
+        'verification_code': 'FYR-7',
         'image_file': (BytesIO(b'fake-png-data'), 'skatt.png')
     }, content_type='multipart/form-data', follow_redirects=True)
 
@@ -121,6 +123,7 @@ def test_member_cannot_upload_unsupported_image(client):
         'title': 'Farlig fil',
         'summary': 'Ska inte sparas.',
         'content': 'Innehåll.',
+        'verification_code': 'FARLIG-1',
         'image_file': (BytesIO(b'not-an-image'), 'skatt.exe')
     }, content_type='multipart/form-data', follow_redirects=True)
 
@@ -144,7 +147,8 @@ def test_member_can_edit_and_resubmit_own_rejected_hunt(client):
         'summary': 'Gammal sammanfattning.',
         'content': 'Gammal ledtråd.',
         'location': 'Ön',
-        'difficulty': 'Medel'
+        'difficulty': 'Medel',
+        'verification_code': 'GAMMAL-1'
     }, follow_redirects=True)
 
     with app.app_context():
@@ -160,7 +164,8 @@ def test_member_can_edit_and_resubmit_own_rejected_hunt(client):
         'content': 'Ny tydlig ledtråd.',
         'image_url': 'https://example.com/ny-skatt.jpg',
         'location': 'Den gröna ön',
-        'difficulty': 'Svår'
+        'difficulty': 'Svår',
+        'verification_code': 'NY-42'
     }, follow_redirects=True)
 
     assert response.status_code == 200
@@ -186,6 +191,7 @@ def test_member_cannot_edit_another_members_hunt(client):
         'title': 'Första skatt',
         'summary': 'Ägs av första.',
         'content': 'Ledtråd.',
+        'verification_code': 'FORSTA-1',
     }, follow_redirects=True)
     client.get('/logout')
 
@@ -226,6 +232,7 @@ def test_admin_moderation_actions_create_audit_log(client):
         'title': 'Loggad skatt',
         'summary': 'Ska få ett beslut.',
         'content': 'En ledtråd.',
+        'verification_code': 'LOGG-1',
     }, follow_redirects=True)
 
     publish_response = client.post('/admin/publish/1', follow_redirects=True)
@@ -235,6 +242,7 @@ def test_admin_moderation_actions_create_audit_log(client):
         'title': 'Avvisad skatt',
         'summary': 'Ska avvisas.',
         'content': 'En annan ledtråd.',
+        'verification_code': 'AVVISA-1',
     }, follow_redirects=True)
     reject_response = client.post('/admin/reject/2', follow_redirects=True)
     assert reject_response.status_code == 200
@@ -313,6 +321,7 @@ def test_member_can_verify_treasure_and_archive_finding(client):
         'summary': 'En skatt med verifieringskod.',
         'content': 'Följ kompassen till fyren.',
         'verification_code': 'GULD-42',
+        'verification_code': 'GULD-42',
     }, follow_redirects=True)
 
     client.post('/admin/publish/1', follow_redirects=True)
@@ -358,6 +367,7 @@ def test_wrong_verification_code_does_not_archive_treasure(client):
         'summary': 'Fel kod ska inte räcka.',
         'content': 'Vid det gamla trädet.',
         'verification_code': 'RATT-KOD',
+        'verification_code': 'RATT-KOD',
     }, follow_redirects=True)
     client.post('/admin/publish/1', follow_redirects=True)
 
@@ -372,3 +382,28 @@ def test_wrong_verification_code_does_not_archive_treasure(client):
         hunt = get_db().execute("SELECT status, found_by_username FROM hunts WHERE id = 1").fetchone()
         assert hunt["status"] == 'published'
         assert hunt["found_by_username"] is None
+
+
+def test_treasure_hunt_requires_verification_code(client):
+    client.post('/register', data={
+        'username': 'utan-kod',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'utan-kod',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    response = client.post('/dashboard/create', data={
+        'title': 'Saknar kod',
+        'summary': 'Ska inte skapas.',
+        'content': 'Ingen kod angiven.'
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'verifieringskod m' in response.data.lower()
+    with app.app_context():
+        from treasure import get_db
+        hunt = get_db().execute("SELECT id FROM hunts WHERE title = ?", ('Saknar kod',)).fetchone()
+        assert hunt is None
