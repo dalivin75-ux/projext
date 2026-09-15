@@ -12,7 +12,7 @@
   <div class="dashboard-layout">
     <div class="panel">
       <h2>Skapa ny skattjakt</h2>
-      <form method="post" action="{{ url_for('create_hunt') }}">
+      <form method="post" action="{{ url_for('create_hunt') }}" enctype="multipart/form-data">
         <label for="title">Titel</label>
         <input id="title" name="title" type="text" required>
 
@@ -22,7 +22,10 @@
         <label for="content">Beskrivning</label>
         <textarea id="content" name="content" rows="6" required></textarea>
 
-        <label for="image_url">Bild-URL</label>
+        <label for="image_file">Ladda upp bild</label>
+        <input id="image_file" name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp">
+
+        <label for="image_url">Eller använd bild-URL</label>
         <input id="image_url" name="image_url" type="url" placeholder="https://...">
 
         <label for="location">Plats</label>

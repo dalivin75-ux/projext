@@ -1,5 +1,6 @@
 __pycache__/
 .venv/
-*.pyc/
-treasure.db/
-test_treasure.db/
+*.pyc
+treasure.db
+test_treasure.db
+static/uploads/

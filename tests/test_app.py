@@ -1,4 +1,5 @@
 import os
+from io import BytesIO
 
 import pytest
 
@@ -76,6 +77,55 @@ def test_admin_can_publish_submission(client):
 
     admin_response = client.post('/admin/publish/1', follow_redirects=True)
     assert admin_response.status_code == 200
+
+
+def test_member_can_upload_valid_image(client):
+    client.post('/register', data={
+        'username': 'bildpirat',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'bildpirat',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    response = client.post('/dashboard/create', data={
+        'title': 'Bildskatten',
+        'summary': 'Ett test med riktig bild.',
+        'content': 'Skatten finns vid fyren.',
+        'location': 'Fyren',
+        'difficulty': 'Lätt',
+        'image_file': (BytesIO(b'fake-png-data'), 'skatt.png')
+    }, content_type='multipart/form-data', follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        from treasure import get_db
+        hunt = get_db().execute("SELECT image_url FROM hunts WHERE title = ?", ('Bildskatten',)).fetchone()
+        assert hunt["image_url"].startswith('/uploads/')
+
+
+def test_member_cannot_upload_unsupported_image(client):
+    client.post('/register', data={
+        'username': 'fildetektiv',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'fildetektiv',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+
+    response = client.post('/dashboard/create', data={
+        'title': 'Farlig fil',
+        'summary': 'Ska inte sparas.',
+        'content': 'Innehåll.',
+        'image_file': (BytesIO(b'not-an-image'), 'skatt.exe')
+    }, content_type='multipart/form-data', follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'JPG, PNG eller WebP' in response.data
 
 
 def test_ensure_admin_exists_for_first_user(client):

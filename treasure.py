@@ -2,12 +2,16 @@ import os
 import sqlite3
 from datetime import datetime
 
-from flask import Flask, flash, g, redirect, render_template, request, session, url_for
+from flask import Flask, flash, g, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "pirateguld-2026")
 app.config["DATABASE"] = os.path.join(os.path.dirname(__file__), "treasure.db")
+app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(__file__), "static", "uploads")
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
 
 def get_db_path():
@@ -22,6 +26,10 @@ def get_db():
         conn.row_factory = sqlite3.Row
         g.db = conn
     return g.db
+
+
+def allowed_image(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 
 @app.teardown_appcontext
@@ -210,6 +218,11 @@ def logout():
     return redirect(url_for("index"))
 
 
+@app.route("/uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
 @app.route("/dashboard")
 def dashboard():
     if not user_is_logged_in():
@@ -237,13 +250,26 @@ def create_hunt():
     title = request.form.get("title", "").strip()
     summary = request.form.get("summary", "").strip()
     content = request.form.get("content", "").strip()
-    image_url = request.form.get("image_url", "").strip() or "https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=900&q=80"
+    image_url = request.form.get("image_url", "").strip()
+    image_file = request.files.get("image_file")
     location = request.form.get("location", "").strip()
     difficulty = request.form.get("difficulty", "").strip()
 
     if not title or not summary or not content:
         flash("Titel, kort text och innehåll måste fyllas i.")
         return redirect(url_for("dashboard"))
+
+    if image_file and image_file.filename:
+        if not allowed_image(image_file.filename):
+            flash("Bilden måste vara JPG, PNG eller WebP.")
+            return redirect(url_for("dashboard"))
+        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+        safe_name = secure_filename(image_file.filename)
+        stored_name = f"{session['user_id']}_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{safe_name}"
+        image_file.save(os.path.join(app.config["UPLOAD_FOLDER"], stored_name))
+        image_url = url_for("uploaded_file", filename=stored_name)
+
+    image_url = image_url or "https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=900&q=80"
 
     db = get_db()
     db.execute(
