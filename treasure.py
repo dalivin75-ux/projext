@@ -587,7 +587,7 @@ def moderation_log():
 def publish_hunt(hunt_id):
     user = current_user()
     if not is_admin_or_moderator(user):
-        flash("Endast admintjänstemän får publicera skattjakter.")
+        flash("Endast admin får publicera skattjakter.")
         return redirect(url_for("index"))
 
     db = get_db()
