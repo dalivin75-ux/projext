@@ -6,9 +6,12 @@
 <section class="container section">
   <div class="section-heading">
     <h1>Skeppets kansli</h1>
-    {% if user.role == 'admin' %}
-      <a class="button secondary" href="{{ url_for('admin_users') }}">Hantera användare</a>
-    {% endif %}
+    <div class="admin-actions">
+      <a class="button secondary" href="{{ url_for('moderation_log') }}">Granskningslogg</a>
+      {% if user.role == 'admin' %}
+        <a class="button secondary" href="{{ url_for('admin_users') }}">Hantera användare</a>
+      {% endif %}
+    </div>
   </div>
 
   {% for hunt in pending %}

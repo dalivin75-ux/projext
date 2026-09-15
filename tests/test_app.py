@@ -212,6 +212,49 @@ def test_member_cannot_edit_another_members_hunt(client):
         assert hunt["title"] == 'Första skatt'
 
 
+def test_admin_moderation_actions_create_audit_log(client):
+    client.post('/register', data={
+        'username': 'loggadmin',
+        'password': 'hemligt123',
+        'confirm_password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/login', data={
+        'username': 'loggadmin',
+        'password': 'hemligt123'
+    }, follow_redirects=True)
+    client.post('/dashboard/create', data={
+        'title': 'Loggad skatt',
+        'summary': 'Ska få ett beslut.',
+        'content': 'En ledtråd.',
+    }, follow_redirects=True)
+
+    publish_response = client.post('/admin/publish/1', follow_redirects=True)
+    assert publish_response.status_code == 200
+
+    client.post('/dashboard/create', data={
+        'title': 'Avvisad skatt',
+        'summary': 'Ska avvisas.',
+        'content': 'En annan ledtråd.',
+    }, follow_redirects=True)
+    reject_response = client.post('/admin/reject/2', follow_redirects=True)
+    assert reject_response.status_code == 200
+
+    with app.app_context():
+        from treasure import get_db
+        logs = get_db().execute(
+            "SELECT action, actor_username FROM moderation_logs ORDER BY id"
+        ).fetchall()
+        assert [(row["action"], row["actor_username"]) for row in logs] == [
+            ('published', 'loggadmin'),
+            ('rejected', 'loggadmin'),
+        ]
+
+    history_response = client.get('/admin/moderation-log')
+    assert history_response.status_code == 200
+    assert b'Loggad skatt' in history_response.data
+    assert b'Avvisad skatt' in history_response.data
+
+
 def test_ensure_admin_exists_for_first_user(client):
     with app.app_context():
         from treasure import get_db

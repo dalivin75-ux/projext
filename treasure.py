@@ -83,6 +83,21 @@ def init_db():
         )
         """
     )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS moderation_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            hunt_id INTEGER NOT NULL,
+            actor_id INTEGER NOT NULL,
+            actor_username TEXT NOT NULL,
+            action TEXT NOT NULL CHECK(action IN ('published', 'rejected')),
+            note TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(hunt_id) REFERENCES hunts(id),
+            FOREIGN KEY(actor_id) REFERENCES users(id)
+        )
+        """
+    )
     db.commit()
 
 
@@ -118,6 +133,19 @@ def ensure_admin_exists():
     if first_user:
         db.execute("UPDATE users SET role = 'admin' WHERE id = ?", (first_user["id"],))
         db.commit()
+
+
+def record_moderation_action(hunt_id, user, action, note=None):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO moderation_logs
+            (hunt_id, actor_id, actor_username, action, note)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (hunt_id, user["id"], user["username"], action, note),
+    )
+    db.commit()
 
 
 @app.before_request
@@ -443,6 +471,25 @@ def update_user_role(user_id):
     return redirect(url_for("admin_users"))
 
 
+@app.route("/admin/moderation-log")
+def moderation_log():
+    user = current_user()
+    if not is_admin_or_moderator(user):
+        flash("Du saknar rättigheter att läsa granskningsloggen.")
+        return redirect(url_for("index"))
+
+    db = get_db()
+    logs = db.execute(
+        """
+        SELECT l.*, h.title
+        FROM moderation_logs l
+        JOIN hunts h ON h.id = l.hunt_id
+        ORDER BY l.created_at DESC, l.id DESC
+        """
+    ).fetchall()
+    return render_template("moderation_log.html", user=user, logs=logs)
+
+
 @app.route("/admin/publish/<int:hunt_id>", methods=["POST"])
 def publish_hunt(hunt_id):
     user = current_user()
@@ -456,6 +503,7 @@ def publish_hunt(hunt_id):
         (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"), hunt_id),
     )
     db.commit()
+    record_moderation_action(hunt_id, user, "published")
     flash("Skattjakten har publicerats på havet.")
     return redirect(url_for("admin_panel"))
 
@@ -470,6 +518,7 @@ def reject_hunt(hunt_id):
     db = get_db()
     db.execute("UPDATE hunts SET status = 'rejected' WHERE id = ?", (hunt_id,))
     db.commit()
+    record_moderation_action(hunt_id, user, "rejected")
     flash("Skattjakten avvisades och lades i skeppets arkiv.")
     return redirect(url_for("admin_panel"))
 

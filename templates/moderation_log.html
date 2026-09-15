@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Granskningslogg{% endblock %}
+
+{% block content %}
+<section class="container section">
+  <div class="section-heading">
+    <h1>Granskningslogg</h1>
+    <a class="button secondary" href="{{ url_for('admin_panel') }}">Tillbaka till kansliet</a>
+  </div>
+
+  <div class="panel">
+    {% for log in logs %}
+      <article class="mini-card">
+        <div class="comment-head">
+          <strong>{{ log.title }}</strong>
+          <span>{{ log.created_at[:16] }}</span>
+        </div>
+        <p>
+          <span class="tag status-{{ log.action }}">{{ log.action }}</span>
+          Beslut fattat av {{ log.actor_username }}.
+        </p>
+        {% if log.note %}<p>{{ log.note }}</p>{% endif %}
+      </article>
+    {% else %}
+      <p>Inga granskningsbeslut har registrerats ännu.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
